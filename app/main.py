@@ -1,10 +1,9 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 
 from .schemas import HoneypotRequest, HoneypotResponse
-from .auth import verify_api_key
 from .memory import get_history, append_message
 from .signals import hard_signal_scan, soft_signal_placeholder
 from .policy import policy_gate
@@ -13,7 +12,6 @@ from .extractor import extract_intel
 from .validator import extract_authority_claim, validate_authority_claim
 
 app = FastAPI(title="Agentic Honeypot API")
-
 
 # 🔥 CORS middleware - GUVI ke liye zaroori
 app.add_middleware(
@@ -30,22 +28,19 @@ def root():
         "service": "agentic-honeypot-api",
         "message": "API is live. Use POST /honeypot"
     }
-# ✅ 2️⃣ Root POST (GUVI evaluator hits THIS)
+
+# ✅ Root POST - API key dependency REMOVED
 @app.post("/", response_model=HoneypotResponse)
-def root_post(
-    req: HoneypotRequest,
-    _=Depends(verify_api_key)
-):
-    # 🔥 SAME logic as /honeypot
-    return honeypot_endpoint(req)
+def root_post(req: HoneypotRequest):
+    return honeypot_endpoint_logic(req)
 
+# ✅ /honeypot endpoint - API key dependency REMOVED
 @app.post("/honeypot", response_model=HoneypotResponse)
-def honeypot_endpoint(
-    req: HoneypotRequest,
-    _=Depends(verify_api_key)
-):
-    
+def honeypot_endpoint(req: HoneypotRequest):
+    return honeypot_endpoint_logic(req)
 
+# 🔥 Shared logic function
+def honeypot_endpoint_logic(req: HoneypotRequest):
     # 0️⃣ Fetch current history
     history = get_history(req.conversation_id)
 
@@ -73,7 +68,7 @@ def honeypot_endpoint(
     # 6️⃣ Agent engagement
     agent_reply = None
     if req.execution_mode == "live":
-        history = get_history(req.conversation_id)   # 🔥 IMPORTANT
+        history = get_history(req.conversation_id)
         agent_reply = generate_agent_reply(history)
         append_message(req.conversation_id, "agent", agent_reply)
 
@@ -98,3 +93,4 @@ def honeypot_endpoint(
             "validation": validation
         }
     )
+    
