@@ -90,6 +90,16 @@ async def root_post(request: Request):
         
         # Create request object safely
         try:
+            raw_message = body.get("message", "")
+            
+            if isinstance(raw_message, dict):
+                raw_message = raw_message.get("text", "")
+            req_data = HoneypotRequest(
+                conversation_id=body.get("sessionId") or body.get("conversation_id", "default"),
+                turn=body.get("turn", 1),
+                message=raw_message,
+                execution_mode=body.get("execution_mode", "live")
+    )
             req_data = HoneypotRequest(
                 conversation_id=body.get("conversation_id", "default"),
                 turn=body.get("turn", 1),
@@ -204,7 +214,7 @@ def honeypot_endpoint_logic(req: HoneypotRequest):
         # Step 4: Authority validation
         try:
             claimed = extract_authority_claim(req.message)
-            validation = validate_authority_claim(claimed)
+            validation = validate_authority_claim(claimed,req.message)
             logger.info(f"✅ Authority validation complete")
         except Exception as e:
             logger.error(f"❌ Validation failed: {e}")
