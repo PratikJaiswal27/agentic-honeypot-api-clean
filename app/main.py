@@ -88,25 +88,26 @@ async def root_post(request: Request):
             logger.warning(f"⚠️ JSON parse failed: {e}, using empty dict")
             body = {}
         
-        # Create request object safely
+        # Create request object safely - CORRECTED VERSION
         try:
             raw_message = body.get("message", "")
             
             if isinstance(raw_message, dict):
                 raw_message = raw_message.get("text", "")
+                
             req_data = HoneypotRequest(
                 conversation_id=body.get("sessionId") or body.get("conversation_id", "default"),
                 turn=body.get("turn", 1),
                 message=raw_message,
                 execution_mode=body.get("execution_mode", "live")
-    )
-            req_data = HoneypotRequest(
-                conversation_id=body.get("conversation_id", "default"),
-                turn=body.get("turn", 1),
-                message=body.get("message", ""),
-                execution_mode=body.get("execution_mode", "live")
             )
-            logger.info(f"✅ Created HoneypotRequest: conv_id={req_data.conversation_id}, turn={req_data.turn}")
+            
+            logger.info(
+                f"✅ Created HoneypotRequest: "
+                f"conv_id={req_data.conversation_id}, "
+                f"turn={req_data.turn}, "
+                f"msg_type={type(raw_message)}"
+            )
         except Exception as e:
             logger.error(f"❌ Failed to create HoneypotRequest: {e}")
             raise
@@ -214,7 +215,7 @@ def honeypot_endpoint_logic(req: HoneypotRequest):
         # Step 4: Authority validation
         try:
             claimed = extract_authority_claim(req.message)
-            validation = validate_authority_claim(claimed,req.message)
+            validation = validate_authority_claim(claimed, req.message)
             logger.info(f"✅ Authority validation complete")
         except Exception as e:
             logger.error(f"❌ Validation failed: {e}")
