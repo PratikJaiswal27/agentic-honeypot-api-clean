@@ -3,12 +3,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, Any, Union
 
 class HoneypotRequest(BaseModel):
-    model_config = ConfigDict(extra="allow")  # 🔥 accept unknown fields
+    model_config = ConfigDict(extra="allow")  # 🔥 Accept unknown fields
 
-    conversation_id: Optional[str] = None
-    turn: Optional[Union[int, str]] = None    # 🔥 NOT required
-    message: str                              # 🔥 ONLY required field
-    execution_mode: Optional[str] = "live"
+    conversation_id: Optional[str] = Field(default="default")
+    turn: Optional[Union[int, str]] = Field(default=1)
+    message: str = Field(default="")  # 🔥 Empty message allowed (GUVI probe request)
+    execution_mode: Optional[str] = Field(default="live")
 
 
 class HoneypotResponse(BaseModel):

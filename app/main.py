@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -12,6 +13,15 @@ from .extractor import extract_intel
 from .validator import extract_authority_claim, validate_authority_claim
 
 app = FastAPI(title="Agentic Honeypot API")
+
+
+# 🔥 CORS middleware - GUVI ke liye zaroori
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
