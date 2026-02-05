@@ -13,6 +13,13 @@ from .validator import extract_authority_claim, validate_authority_claim
 
 app = FastAPI(title="Agentic Honeypot API")
 
+@app.get("/")
+def root():
+    return {
+        "status": "ok",
+        "service": "agentic-honeypot-api",
+        "message": "API is live. Use POST /honeypot"
+    }
 @app.post("/honeypot", response_model=HoneypotResponse)
 def honeypot_endpoint(
     req: HoneypotRequest,
