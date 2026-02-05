@@ -13,7 +13,6 @@ from .validator import extract_authority_claim, validate_authority_claim
 
 app = FastAPI(title="Agentic Honeypot API")
 
-# 🔥 CORS middleware - GUVI ke liye zaroori
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -29,52 +28,35 @@ def root():
         "message": "API is live. Use POST /honeypot"
     }
 
-# ✅ Root POST - API key dependency REMOVED
 @app.post("/", response_model=HoneypotResponse)
 def root_post(req: HoneypotRequest):
     return honeypot_endpoint_logic(req)
 
-# ✅ /honeypot endpoint - API key dependency REMOVED
 @app.post("/honeypot", response_model=HoneypotResponse)
 def honeypot_endpoint(req: HoneypotRequest):
     return honeypot_endpoint_logic(req)
 
-# 🔥 Shared logic function
 def honeypot_endpoint_logic(req: HoneypotRequest):
-    # 0️⃣ Fetch current history
     history = get_history(req.conversation_id)
-
-    # 1️⃣ Append SCAMMER message FIRST
     append_message(req.conversation_id, "scammer", req.message)
-
-    # 2️⃣ Re-fetch UPDATED history
     history = get_history(req.conversation_id)
-
-    # 3️⃣ Signal extraction
+    
     hard = hard_signal_scan(req.message)
     soft = soft_signal_placeholder(req.message)
-
-    # 4️⃣ Authority validation
+    
     claimed = extract_authority_claim(req.message)
     validation = validate_authority_claim(claimed)
-
-    # 5️⃣ Final decision
-    decision = policy_gate(
-        hard=hard,
-        soft=soft,
-        validation=validation
-    )
-
-    # 6️⃣ Agent engagement
+    
+    decision = policy_gate(hard=hard, soft=soft, validation=validation)
+    
     agent_reply = None
     if req.execution_mode == "live":
         history = get_history(req.conversation_id)
         agent_reply = generate_agent_reply(history)
         append_message(req.conversation_id, "agent", agent_reply)
-
-    # 7️⃣ Intelligence extraction
+    
     intel = extract_intel(req.message)
-
+    
     return HoneypotResponse(
         scam_detected=decision.get("scam", False),
         risk_score=decision.get("risk", "UNKNOWN"),
