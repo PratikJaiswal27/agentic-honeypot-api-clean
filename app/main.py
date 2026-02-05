@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
@@ -35,6 +35,22 @@ def root_post(req: HoneypotRequest):
 @app.post("/honeypot", response_model=HoneypotResponse)
 def honeypot_endpoint(req: HoneypotRequest):
     return honeypot_endpoint_logic(req)
+
+# 🔍 Debug endpoint - GUVI ke baad hata dena
+@app.post("/debug")
+async def debug_endpoint(request: Request):
+    """
+    GUVI ka raw payload capture karne ke liye
+    """
+    body = await request.body()
+    headers = dict(request.headers)
+    
+    return {
+        "received_body": body.decode('utf-8'),
+        "content_type": headers.get("content-type"),
+        "all_headers": headers,
+        "method": request.method
+    }
 
 def honeypot_endpoint_logic(req: HoneypotRequest):
     history = get_history(req.conversation_id)
