@@ -53,42 +53,54 @@ def append_message(
 # Escalation Detection Logic
 # -------------------------------------------------------------------
 
-def detect_escalation(conversation_id: str) -> bool:
+def detect_escalation(conversation_id: str) -> dict:
     """
     Detects escalation based on signal progression across turns.
 
-    Escalation definition (deterministic):
-    - Pressure indicators increase over time OR
-    - New irreversible action appears after initial benign turns
+    Returns structured escalation signal (policy-friendly).
     """
 
     history = CONVERSATIONS.get(conversation_id, [])
     if len(history) < 2:
-        return False
+        return {
+            "escalation": False,
+            "reason": "Insufficient conversation history"
+        }
 
     urgency_scores = []
-    irreversible_seen = set()
+    irreversible_turns = []
 
-    for entry in history:
+    for idx, entry in enumerate(history):
         signals = entry.get("signals", {})
 
-        # Track urgency trend
         urgency = signals.get("urgency_score")
         if isinstance(urgency, (int, float)):
             urgency_scores.append(urgency)
 
-        # Track irreversible actions
         actions = signals.get("irreversible_actions", [])
-        for action in actions:
-            irreversible_seen.add(action)
+        if actions:
+            irreversible_turns.append(idx)
 
-    # Condition 1: urgency increasing over turns
-    urgency_increasing = False
-    if len(urgency_scores) >= 2:
-        urgency_increasing = urgency_scores[-1] > urgency_scores[0]
+    # ---- Condition 1: sustained urgency increase ----
+    urgency_escalating = False
+    if len(urgency_scores) >= 3:
+        urgency_escalating = urgency_scores[-1] > urgency_scores[-2] > urgency_scores[0]
 
-    # Condition 2: irreversible action appears after conversation started
-    irreversible_present = len(irreversible_seen) > 0
+    # ---- Condition 2: irreversible introduced AFTER start ----
+    irreversible_late = (
+        len(irreversible_turns) > 0 and
+        irreversible_turns[0] > 0
+    )
 
-    # Escalation occurs if BOTH hold true
-    return urgency_increasing and irreversible_present
+    if urgency_escalating and irreversible_late:
+        return {
+            "escalation": True,
+            "reason": "Urgency increased across turns and irreversible action introduced later",
+            "urgency_trend": urgency_scores,
+            "irreversible_first_seen_at_turn": irreversible_turns[0]
+        }
+
+    return {
+        "escalation": False,
+        "reason": "No sustained escalation pattern detected"
+    }
