@@ -20,11 +20,22 @@ def root():
         "service": "agentic-honeypot-api",
         "message": "API is live. Use POST /honeypot"
     }
+# ✅ 2️⃣ Root POST (GUVI evaluator hits THIS)
+@app.post("/", response_model=HoneypotResponse)
+def root_post(
+    req: HoneypotRequest,
+    _=Depends(verify_api_key)
+):
+    # 🔥 SAME logic as /honeypot
+    return honeypot_endpoint(req)
+
 @app.post("/honeypot", response_model=HoneypotResponse)
 def honeypot_endpoint(
     req: HoneypotRequest,
     _=Depends(verify_api_key)
 ):
+    
+
     # 0️⃣ Fetch current history
     history = get_history(req.conversation_id)
 
