@@ -689,6 +689,7 @@ def policy_gate(hard: dict, soft: dict, validation: dict) -> dict:
     # ---- Build signals & evaluate ----
 
     signals = _Signals(hard, soft)
+    signals.validation = validation  # 🔥 ADD THIS LINE
     decision = evaluate_message(signals)
 
     # 🔥 BUG FIX #2: Return validation data for audit trail
