@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 
-from .schemas import HoneypotRequest, HoneypotResponse
+from .schemas import HoneypotRequest
 from .memory import get_history, append_message
 from .signals import hard_signal_scan, soft_signal_placeholder
 from .policy import policy_gate
@@ -28,21 +28,47 @@ def root():
         "message": "API is live. Use POST /honeypot"
     }
 
-# 🔥 response_model REMOVED
+# 🔥 ROOT POST - /debug jaisa loose validation
 @app.post("/")
-async def root_post(req: HoneypotRequest):
-    result = honeypot_endpoint_logic(req)
-    return result  # Direct dict return, no Pydantic validation
+async def root_post(request: Request):
+    """
+    Universal handler - kuch bhi accept karega
+    """
+    try:
+        body = await request.json()
+    except:
+        body = {}
+    
+    # Extract fields manually with defaults
+    req_data = HoneypotRequest(
+        conversation_id=body.get("conversation_id", "default"),
+        turn=body.get("turn", 1),
+        message=body.get("message", ""),
+        execution_mode=body.get("execution_mode", "live")
+    )
+    
+    return honeypot_endpoint_logic(req_data)
 
-# 🔥 response_model REMOVED
+# 🔥 HONEYPOT - same loose validation
 @app.post("/honeypot")
-async def honeypot_endpoint(req: HoneypotRequest):
-    result = honeypot_endpoint_logic(req)
-    return result
+async def honeypot_endpoint(request: Request):
+    try:
+        body = await request.json()
+    except:
+        body = {}
+    
+    req_data = HoneypotRequest(
+        conversation_id=body.get("conversation_id", "default"),
+        turn=body.get("turn", 1),
+        message=body.get("message", ""),
+        execution_mode=body.get("execution_mode", "live")
+    )
+    
+    return honeypot_endpoint_logic(req_data)
 
 @app.post("/debug")
 async def debug_endpoint(request: Request):
-    """GUVI ka raw payload capture karne ke liye"""
+    """Debugging endpoint"""
     body = await request.body()
     headers = dict(request.headers)
     
@@ -54,6 +80,8 @@ async def debug_endpoint(request: Request):
     }
 
 def honeypot_endpoint_logic(req: HoneypotRequest):
+    """Core logic - dict return (no Pydantic validation)"""
+    
     history = get_history(req.conversation_id)
     append_message(req.conversation_id, "scammer", req.message)
     history = get_history(req.conversation_id)
@@ -74,22 +102,22 @@ def honeypot_endpoint_logic(req: HoneypotRequest):
     
     intel = extract_intel(req.message)
     
-    # 🔥 Return plain dict instead of HoneypotResponse object
+    # Plain dict return
     return {
         "scam_detected": decision.get("scam", False),
         "risk_score": decision.get("risk", "UNKNOWN"),
         "decision_confidence": decision.get("confidence", "low"),
         "agent_reply": agent_reply,
-        "extracted_intelligence": intel or {},  # 🔥 Ensure dict, not None
+        "extracted_intelligence": intel if isinstance(intel, dict) else {},
         "engagement_metrics": {
-            "turn": req.turn,
-            "history_length": len(history)
+            "turn": req.turn if req.turn else 1,
+            "history_length": len(history) if history else 0
         },
         "explanation": {
-            "risk_band": decision.get("risk_band"),
-            "reasons": decision.get("reasons", []) or [],  # 🔥 Ensure list
-            "hard_signals": hard or {},
-            "soft_signals": soft or {},
-            "validation": validation or {}
+            "risk_band": decision.get("risk_band", "unknown"),
+            "reasons": decision.get("reasons", []) if decision.get("reasons") else [],
+            "hard_signals": hard if isinstance(hard, dict) else {},
+            "soft_signals": soft if isinstance(soft, dict) else {},
+            "validation": validation if isinstance(validation, dict) else {}
         }
     }
