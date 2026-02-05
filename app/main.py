@@ -28,20 +28,21 @@ def root():
         "message": "API is live. Use POST /honeypot"
     }
 
-@app.post("/", response_model=HoneypotResponse)
-def root_post(req: HoneypotRequest):
-    return honeypot_endpoint_logic(req)
+# 🔥 response_model REMOVED
+@app.post("/")
+async def root_post(req: HoneypotRequest):
+    result = honeypot_endpoint_logic(req)
+    return result  # Direct dict return, no Pydantic validation
 
-@app.post("/honeypot", response_model=HoneypotResponse)
-def honeypot_endpoint(req: HoneypotRequest):
-    return honeypot_endpoint_logic(req)
+# 🔥 response_model REMOVED
+@app.post("/honeypot")
+async def honeypot_endpoint(req: HoneypotRequest):
+    result = honeypot_endpoint_logic(req)
+    return result
 
-# 🔍 Debug endpoint - GUVI ke baad hata dena
 @app.post("/debug")
 async def debug_endpoint(request: Request):
-    """
-    GUVI ka raw payload capture karne ke liye
-    """
+    """GUVI ka raw payload capture karne ke liye"""
     body = await request.body()
     headers = dict(request.headers)
     
@@ -73,22 +74,22 @@ def honeypot_endpoint_logic(req: HoneypotRequest):
     
     intel = extract_intel(req.message)
     
-    return HoneypotResponse(
-        scam_detected=decision.get("scam", False),
-        risk_score=decision.get("risk", "UNKNOWN"),
-        decision_confidence=decision.get("confidence", "low"),
-        agent_reply=agent_reply,
-        extracted_intelligence=intel,
-        engagement_metrics={
+    # 🔥 Return plain dict instead of HoneypotResponse object
+    return {
+        "scam_detected": decision.get("scam", False),
+        "risk_score": decision.get("risk", "UNKNOWN"),
+        "decision_confidence": decision.get("confidence", "low"),
+        "agent_reply": agent_reply,
+        "extracted_intelligence": intel or {},  # 🔥 Ensure dict, not None
+        "engagement_metrics": {
             "turn": req.turn,
             "history_length": len(history)
         },
-        explanation={
+        "explanation": {
             "risk_band": decision.get("risk_band"),
-            "reasons": decision.get("reasons", []),
-            "hard_signals": hard,
-            "soft_signals": soft,
-            "validation": validation
+            "reasons": decision.get("reasons", []) or [],  # 🔥 Ensure list
+            "hard_signals": hard or {},
+            "soft_signals": soft or {},
+            "validation": validation or {}
         }
-    )
-    
+    }
